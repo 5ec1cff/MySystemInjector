@@ -20,13 +20,13 @@ public class HookEntry implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
+        XposedBridge.log("current package=" + lpparam.packageName + " current pid=" + Process.myPid()
+                + " current process=" + lpparam.processName + " classLoader=" + lpparam.classLoader);
         if (!lpparam.packageName.equals("android") || !lpparam.processName.equals("android")) {
             return;
         }
         if (loaded) return;
         loaded = true;
-        XposedBridge.log("current package=" + lpparam.packageName + " current pid=" + Process.myPid()
-                + " current process=" + lpparam.processName + " classLoader=" + lpparam.classLoader);
 
         if (isFeatureEnabled("disable")) {
             XposedBridge.log("disabled, exit");
