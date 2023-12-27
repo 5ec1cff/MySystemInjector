@@ -1,8 +1,11 @@
 package five.ec1cff.mysysteminjector.xposed;
 
+import android.content.Intent;
+import android.content.pm.ResolveInfo;
 import android.os.Process;
 
 import java.io.File;
+import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -36,6 +39,7 @@ public class HookEntry implements IXposedHookLoadPackage {
         try {
             if (isFeatureEnabled("nowakepath")) {
                 XposedBridge.log("hook for nowakepath");
+                // miui-framework.jar
                 XposedBridge.hookAllMethods(
                         XposedHelpers.findClass("miui.security.SecurityManager", lpparam.classLoader),
                         "getCheckStartActivityIntent",
@@ -96,7 +100,21 @@ public class HookEntry implements IXposedHookLoadPackage {
 
         try {
             if (isFeatureEnabled("nomiuiintent")) {
-                XposedBridge.log("hook for installer");
+                XposedBridge.log("hook for nomiuiintent");
+                // for 13.0.3
+                // miui-services.jar
+                XposedHelpers.findAndHookMethod("com.android.server.pm.PackageManagerServiceImpl", lpparam.classLoader,
+                        "hookChooseBestActivity",
+                    Intent.class, String.class, int.class, List.class, int.class, ResolveInfo.class, new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                            param.setResult(param.args[5]); // defaultValue
+                        }
+                    }
+                );
+                // for 12.5.7
+                // services.jar
+                /*
                 XposedBridge.hookAllMethods(
                         XposedHelpers.findClass("com.android.server.pm.PackageManagerServiceInjector", lpparam.classLoader),
                         "checkMiuiIntent",
@@ -108,7 +126,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                                 );
                             }
                         }
-                );
+                );*/
                 XposedBridge.log("hook done");
             }
         } catch (Throwable t) {
