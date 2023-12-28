@@ -9,6 +9,7 @@ import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -148,6 +149,67 @@ public class HookEntry implements IXposedHookLoadPackage {
                                     // XposedBridge.log("protect " + packageName + " from PMC");
                                     param.setResult(null);
                                 }
+                            }
+                        }
+                );
+            }
+        } catch (Throwable t) {
+            XposedBridge.log(t);
+        }
+
+        try {
+            if (isFeatureEnabled("fonts")) {
+                XposedBridge.log("hook for fonts");
+                ThreadLocal<Boolean> isCreating = new ThreadLocal<>();
+                Class<?> FMS = XposedHelpers.findClass("com.android.server.graphics.fonts.FontManagerService", lpparam.classLoader);
+                Class<?> FUI = XposedHelpers.findClass("com.android.server.graphics.fonts.FontManagerService$FsverityUtilImpl", lpparam.classLoader);
+                XposedBridge.hookAllConstructors(
+                        FMS,
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                isCreating.set(true);
+                            }
+
+                            @Override
+                            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                                isCreating.set(false);
+                            }
+                        }
+                );
+                XposedBridge.hookAllMethods(
+                        XposedHelpers.findClass("com.android.internal.security.VerityUtils", lpparam.classLoader),
+                        "isFsVeritySupported",
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                if (isCreating.get()) {
+                                    XposedBridge.log("bypass isFsVeritySupported for FMS");
+                                    param.setResult(true);
+                                    isCreating.set(false);
+                                }
+                            }
+                        }
+                );
+                XposedBridge.hookAllMethods(
+                        FUI,
+                        "hasFsverity",
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                XposedBridge.log("bypass hasFsverity for " + param.args[0]);
+                                param.setResult(true);
+                            }
+                        }
+                );
+                XposedBridge.hookAllMethods(
+                        FUI,
+                        "setUpFsverity",
+                        new XC_MethodReplacement() {
+                            @Override
+                            protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
+                                XposedBridge.log("bypass setUpFsverity for " + param.args[0]);
+                                return null;
                             }
                         }
                 );
