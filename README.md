@@ -2,7 +2,7 @@
 
 支持版本： ~~12.5.7~~ -> 13.0.3
 
-作用域：system （系统服务）
+作用域：system （系统服务）、android（系统）
 
 ## 使用方法
 
@@ -59,3 +59,5 @@ cmd font update /path/to/font.ttf /path/to/dummy
 
 ### xspace
 
+1. 在系统服务：允许 shell 指定用户直接启动 activity 而无需弹出选择分身的提示（ `am start --user` ）
+2. 在系统：ResolverActivity 直接显示分身 app 的打开方式，无需二次点击。  

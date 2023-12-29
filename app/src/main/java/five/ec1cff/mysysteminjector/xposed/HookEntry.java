@@ -1,10 +1,15 @@
 package five.ec1cff.mysysteminjector.xposed;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
+import android.graphics.drawable.Drawable;
+import android.os.UserHandle;
 
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -32,7 +37,9 @@ public class HookEntry implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-        if (!lpparam.packageName.equals("android") || !lpparam.processName.equals("android")) {
+        boolean inSystemServer = lpparam.packageName.equals("android") && lpparam.processName.equals("android");
+        boolean inSystem = lpparam.packageName.equals("system");
+        if (!inSystemServer && !inSystem) {
             return;
         }
         if (loaded) return;
@@ -42,6 +49,14 @@ public class HookEntry implements IXposedHookLoadPackage {
             log("disabled, exit");
             return;
         }
+
+        if (inSystem) {
+            if (isFeatureEnabled("xspace")) {
+                hookXSpaceInUI(lpparam);
+            }
+        }
+
+        if (!inSystemServer) return;
 
         try {
             if (isFeatureEnabled("nowakepath")) {
@@ -239,6 +254,140 @@ public class HookEntry implements IXposedHookLoadPackage {
                 }
         } catch (Throwable t) {
             log("hook xspace shell failed", t);
+        }
+    }
+
+    private void hookXSpaceInUI(XC_LoadPackage.LoadPackageParam lpparam) {
+        log("hookForXspace in system");
+        XposedBridge.hookAllMethods(
+                XposedHelpers.findClass("com.android.internal.app.ResolverListController", lpparam.classLoader),
+                "getResolversForIntent",
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        List result = (List) param.getResult();
+                        if (result == null) return;
+                        List/*com.android.internal.app.ResolverActivity$ResolvedComponentInfo*/ listForXSpace = (List) XposedHelpers.callMethod(param.thisObject, "getResolversForIntentAsUser",
+                                param.args[0], param.args[1], param.args[2],
+                                XposedHelpers.callStaticMethod(android.os.UserHandle.class, "of", 999
+                                )
+                        );
+                        for (Object infoXs : listForXSpace) {
+                            List<ResolveInfo> rInfosXs = (List<ResolveInfo>) XposedHelpers.getObjectField(infoXs, "mResolveInfos");
+                            if (rInfosXs.isEmpty()) continue;
+                            ResolveInfo rInfoXs = rInfosXs.get(0);
+                            rInfosXs.set(0, new MyResolveInfo(rInfoXs));
+                            for (Object orig : result) {
+                                List<ResolveInfo> infos = (List<ResolveInfo>) XposedHelpers.getObjectField(orig, "mResolveInfos");
+                                if (infos.isEmpty()) continue;
+                                ResolveInfo oldInfo = infos.get(0);
+                                if (Objects.equals(oldInfo.activityInfo.packageName, rInfoXs.activityInfo.packageName)
+                                        && Objects.equals(oldInfo.activityInfo.name, rInfoXs.activityInfo.name)) {
+                                    infos.set(0, new MyResolveInfo(oldInfo));
+                                }
+                            }
+                        }
+                        log("add resolveInfo " + result.size() + " + " + listForXSpace.size());
+                        result.addAll(listForXSpace);
+                    }
+                }
+        );
+
+        XposedBridge.hookAllMethods(
+                XposedHelpers.findClass("com.android.internal.app.ResolverListAdapter", lpparam.classLoader),
+                "shouldAddResolveInfo",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        Object o = param.args[0];
+                        ResolveInfo resolve = (ResolveInfo) XposedHelpers.getObjectField(o, "mResolveInfo");
+                        log("check resolveinfo " + resolve);
+                        if (resolve.activityInfo.applicationInfo.uid / 100000 == 999) {
+                            log("allow resolveinfo " + resolve);
+                            param.setResult(true);
+                        }
+                    }
+                }
+        );
+
+        XposedBridge.hookAllMethods(
+                XposedHelpers.findClass("com.android.internal.app.ResolverListAdapter$TargetPresentationGetter", lpparam.classLoader),
+                "getIconBitmap",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        log("get icon");
+                        ApplicationInfo ai = (ApplicationInfo) XposedHelpers.getObjectField(param.thisObject, "mAi");
+                        if (ai.uid / 100000 == 999) {
+                            param.args[0] = XposedHelpers.callStaticMethod(UserHandle.class, "of", 999);
+                        }
+                    }
+                }
+        );
+
+        ThreadLocal<MyResolveInfo> currentResolveInfo = new ThreadLocal<>();
+
+        Class<?> classMIUIResolverActivity = XposedHelpers.findClass("com.android.internal.app.MiuiResolverActivity", lpparam.classLoader);
+
+        XposedBridge.hookAllMethods(
+                classMIUIResolverActivity,
+                "safelyStartActivity", new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        ResolveInfo ri = (ResolveInfo) XposedHelpers.getObjectField(param.args[0], "mResolveInfo");
+                        log("startActivity ri=" + ri + " class=" + ri.getClass());
+                        if (ri instanceof MyResolveInfo) {
+                            currentResolveInfo.set((MyResolveInfo) ri);
+                        }
+                    }
+
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        currentResolveInfo.set(null);
+                    }
+                });
+
+        XposedBridge.hookAllMethods(
+                classMIUIResolverActivity,
+                "startAsCaller",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        log("starting");
+                        MyResolveInfo current = currentResolveInfo.get();
+                        if (current != null) {
+                            Intent intent = (Intent) param.args[0];
+                            // see com.miui.server.xspace.XSpaceManagerServiceImpl#checkXSpaceControl
+                            intent.putExtra("android.intent.extra.xspace_userid_selected", true);
+                            int userId = current.activityInfo.applicationInfo.uid / 100000;
+                            log("set to " + userId);
+                            param.args[1] = userId;
+                        }
+                    }
+                }
+        );
+
+        XposedBridge.hookAllMethods(
+                XposedHelpers.findClass("com.android.internal.app.ResolverActivityStubImpl$LoadIconTask", lpparam.classLoader),
+                "doInBackground",
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        ResolveInfo info = (ResolveInfo) XposedHelpers.getObjectField(param.thisObject, "mResolveInfo");
+                        if (info.activityInfo.applicationInfo.uid / 100000 != 999) return;
+                        log("fixup icon");
+                        Drawable result = (Drawable) param.getResult();
+                        Context context = (Context) XposedHelpers.getObjectField(XposedHelpers.getObjectField(param.thisObject, "this$0"), "mContext");
+                        Drawable realResult = context.getPackageManager().getUserBadgedIcon(result, (UserHandle) XposedHelpers.callStaticMethod(UserHandle.class, "of", 999));
+                        param.setResult(realResult);
+                    }
+                }
+        );
+    }
+
+    private static class MyResolveInfo extends ResolveInfo {
+        MyResolveInfo(ResolveInfo info) {
+            super(info);
         }
     }
 }

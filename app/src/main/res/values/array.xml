@@ -2,5 +2,6 @@
 <resources>
     <string-array name="scope">
         <item>android</item>
+        <item>system</item>
     </string-array>
 </resources>
