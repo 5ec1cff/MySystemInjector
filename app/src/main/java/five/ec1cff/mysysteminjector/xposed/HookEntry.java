@@ -2,7 +2,6 @@ package five.ec1cff.mysysteminjector.xposed;
 
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
-import android.os.Process;
 
 import java.io.File;
 import java.util.List;
@@ -22,10 +21,17 @@ public class HookEntry implements IXposedHookLoadPackage {
         return new File(new File(WORKDIR), featureName).exists();
     }
 
+    public static void log(String msg) {
+        XposedBridge.log("[" + TAG + "] " + msg);
+    }
+
+    public static void log(String msg, Throwable t) {
+        XposedBridge.log("[" + TAG + "] " + msg);
+        XposedBridge.log(t);
+    }
+
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-        XposedBridge.log("current package=" + lpparam.packageName + " current pid=" + Process.myPid()
-                + " current process=" + lpparam.processName + " classLoader=" + lpparam.classLoader);
         if (!lpparam.packageName.equals("android") || !lpparam.processName.equals("android")) {
             return;
         }
@@ -33,13 +39,13 @@ public class HookEntry implements IXposedHookLoadPackage {
         loaded = true;
 
         if (isFeatureEnabled("disable")) {
-            XposedBridge.log("disabled, exit");
+            log("disabled, exit");
             return;
         }
 
         try {
             if (isFeatureEnabled("nowakepath")) {
-                XposedBridge.log("hook for nowakepath");
+                log("hook for nowakepath");
                 // miui-framework.jar
                 XposedBridge.hookAllMethods(
                         XposedHelpers.findClass("miui.security.SecurityManager", lpparam.classLoader),
@@ -51,7 +57,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                             }
                         }
                 );
-                XposedBridge.log("hook done");
+                log("hook done");
             }
         } catch (Throwable t) {
             XposedBridge.log(t);
@@ -59,7 +65,7 @@ public class HookEntry implements IXposedHookLoadPackage {
 
         try {
             if (isFeatureEnabled("installer")) {
-                XposedBridge.log("hook for installer");
+                log("hook for installer");
                 XposedBridge.hookAllMethods(
                         XposedHelpers.findClass("com.android.server.pm.PackageManagerServiceInjector", lpparam.classLoader),
                         "checkPackageInstallerStatus",
@@ -72,36 +78,36 @@ public class HookEntry implements IXposedHookLoadPackage {
                                 Object googleInstaller = XposedHelpers.callMethod(mPackages, "get", "com.google.android.packageinstaller");
                                 Object miuiInstaller = XposedHelpers.callMethod(mPackages, "get", "com.miui.packageinstaller");
                                 if (googleInstaller == null || miuiInstaller == null) {
-                                    XposedBridge.log("failed to find PackageSetting, cancel");
+                                    log("failed to find PackageSetting, cancel");
                                     return;
                                 }
-                                XposedBridge.log("google=" + googleInstaller);
-                                XposedBridge.log("miui=" + miuiInstaller);
+                                log("google=" + googleInstaller);
+                                log("miui=" + miuiInstaller);
                                 XposedHelpers.callMethod(googleInstaller, "setInstalled", true, 0);
                                 XposedHelpers.callMethod(miuiInstaller, "setInstalled", false, 0);
                                 try {
                                     Object installer = XposedHelpers.callMethod(param.args[0], "getRequiredInstallerLPr");
-                                    XposedBridge.log("replace installer:" + installer);
+                                    log("replace installer:" + installer);
                                 } catch (RuntimeException e) {
-                                    XposedBridge.log("failed to replace installer, call original method fallback...");
-                                    XposedBridge.log(e);
+                                    // ?
+                                    log("failed to replace installer, call original method fallback...", e);
                                     return;
                                 } catch (Throwable t) {
-                                    XposedBridge.log(t);
+                                    log("something wrong", t);
                                 }
                                 param.setResult(null);
                             }
                         }
                 );
-                XposedBridge.log("hook done");
+                log("hook done");
             }
         } catch (Throwable t) {
-            XposedBridge.log(t);
+            log("hook installer", t);
         }
 
         try {
             if (isFeatureEnabled("nomiuiintent")) {
-                XposedBridge.log("hook for nomiuiintent");
+                log("hook for nomiuiintent");
                 // for 13.0.3
                 // miui-services.jar
                 XposedHelpers.findAndHookMethod("com.android.server.pm.PackageManagerServiceImpl", lpparam.classLoader,
@@ -128,15 +134,15 @@ public class HookEntry implements IXposedHookLoadPackage {
                             }
                         }
                 );*/
-                XposedBridge.log("hook done");
+                log("nomiuiintent hook done");
             }
         } catch (Throwable t) {
-            XposedBridge.log(t);
+            log("nomiuiintent error", t);
         }
 
         try {
             if (isFeatureEnabled("protect_mc")) {
-                XposedBridge.log("hook for ProcessMemoryCleaner");
+                log("hook for ProcessMemoryCleaner");
                 XposedHelpers.findAndHookMethod(
                         XposedHelpers.findClass("com.android.server.am.ProcessMemoryCleaner", lpparam.classLoader),
                         "checkBackgroundApp",
@@ -154,12 +160,12 @@ public class HookEntry implements IXposedHookLoadPackage {
                 );
             }
         } catch (Throwable t) {
-            XposedBridge.log(t);
+            log("protect_mc error", t);
         }
 
         try {
             if (isFeatureEnabled("fonts")) {
-                XposedBridge.log("hook for fonts");
+                log("hook for fonts");
                 ThreadLocal<Boolean> isCreating = new ThreadLocal<>();
                 Class<?> FMS = XposedHelpers.findClass("com.android.server.graphics.fonts.FontManagerService", lpparam.classLoader);
                 Class<?> FUI = XposedHelpers.findClass("com.android.server.graphics.fonts.FontManagerService$FsverityUtilImpl", lpparam.classLoader);
@@ -184,7 +190,6 @@ public class HookEntry implements IXposedHookLoadPackage {
                             @Override
                             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                                 if (isCreating.get()) {
-                                    XposedBridge.log("bypass isFsVeritySupported for FMS");
                                     param.setResult(true);
                                     isCreating.set(false);
                                 }
@@ -197,7 +202,6 @@ public class HookEntry implements IXposedHookLoadPackage {
                         new XC_MethodHook() {
                             @Override
                             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                                XposedBridge.log("bypass hasFsverity for " + param.args[0]);
                                 param.setResult(true);
                             }
                         }
@@ -208,7 +212,6 @@ public class HookEntry implements IXposedHookLoadPackage {
                         new XC_MethodReplacement() {
                             @Override
                             protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
-                                XposedBridge.log("bypass setUpFsverity for " + param.args[0]);
                                 return null;
                             }
                         }
@@ -216,6 +219,27 @@ public class HookEntry implements IXposedHookLoadPackage {
             }
         } catch (Throwable t) {
             XposedBridge.log(t);
+        }
+
+        hookXSpace(lpparam);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void hookXSpace(XC_LoadPackage.LoadPackageParam lpparam) {
+        try {
+            if (isFeatureEnabled("xspace")) {
+                log("[MySystemInjector] hook for xspace");
+                Class<?> classXSpaceManager = XposedHelpers.findClass("com.miui.server.xspace.XSpaceManagerServiceImpl", lpparam.classLoader);
+                List<String> list = (List<String>) XposedHelpers.getStaticObjectField(classXSpaceManager, "sCrossUserCallingPackagesWhiteList");
+                if (list != null) {
+                    list.add("com.android.shell");
+                    XposedBridge.log("[MySystemInjector] add shell to whitelist at init");
+                } else {
+                    XposedBridge.log("[MySystemInjector] whitelist is null");
+                }
+            }
+        } catch (Throwable t) {
+            log("hook xspace", t);
         }
     }
 }
