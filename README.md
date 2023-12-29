@@ -11,11 +11,13 @@ mkdir -p /data/system/fuckmiui
 touch /data/system/fuckmiui/${feature}
 ```
 
-feature 为你想要开启的功能（详见下方）
+feature 为你想要开启的功能（详见下方标题）
 
-如果创建名为 `disable` 的文件，则关闭所有功能，便于系统无法启动的时候排查问题。
+如果创建了名为 `disable` 的文件，则会关闭所有功能，便于系统无法启动的时候排查问题。
 
 ## 功能
+
+画删除线的是停止维护的功能，不保证可用
 
 ### nowakepath
 
@@ -23,7 +25,7 @@ feature 为你想要开启的功能（详见下方）
 
 ### ~~installer~~
 
-防止 google installer 被自动卸载（未经测试，作者自己都不用）
+防止 google installer 被自动卸载
 
 如果你想换用 google installer ，需要开启该功能同时卸载 miui installer ，因为系统不允许同时存在两个 installer （会崩）。
 
@@ -33,7 +35,7 @@ feature 为你想要开启的功能（详见下方）
 
 ### ~~protect_mc~~
 
-防止杀进程（不知道什么情况下会触发的自动清理，未经测试，作者自己都不用）
+防止杀进程（不知道什么情况下会触发的自动清理）
 
 启用后还需要需要添加文件 `protect_mc_${packageName}` 指定你想要阻止被杀进程的包名。例如 `protect_mc_com.tencent.mobileqq` 。
 

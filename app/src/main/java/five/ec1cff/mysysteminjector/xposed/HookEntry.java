@@ -226,9 +226,9 @@ public class HookEntry implements IXposedHookLoadPackage {
 
     @SuppressWarnings("unchecked")
     private void hookXSpace(XC_LoadPackage.LoadPackageParam lpparam) {
+        if (!isFeatureEnabled("xspace")) return;
+        log("[MySystemInjector] hook for xspace");
         try {
-            if (isFeatureEnabled("xspace")) {
-                log("[MySystemInjector] hook for xspace");
                 Class<?> classXSpaceManager = XposedHelpers.findClass("com.miui.server.xspace.XSpaceManagerServiceImpl", lpparam.classLoader);
                 List<String> list = (List<String>) XposedHelpers.getStaticObjectField(classXSpaceManager, "sCrossUserCallingPackagesWhiteList");
                 if (list != null) {
@@ -237,9 +237,8 @@ public class HookEntry implements IXposedHookLoadPackage {
                 } else {
                     XposedBridge.log("[MySystemInjector] whitelist is null");
                 }
-            }
         } catch (Throwable t) {
-            log("hook xspace", t);
+            log("hook xspace shell failed", t);
         }
     }
 }
