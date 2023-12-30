@@ -248,10 +248,18 @@ public class HookEntry implements IXposedHookLoadPackage {
                 List<String> list = (List<String>) XposedHelpers.getStaticObjectField(classXSpaceManager, "sCrossUserCallingPackagesWhiteList");
                 if (list != null) {
                     list.add("com.android.shell");
-                    XposedBridge.log("[MySystemInjector] add shell to whitelist at init");
+                    list.add("com.xiaomi.xmsf");
+                    log("add required packages to whitelist at init");
                 } else {
-                    XposedBridge.log("[MySystemInjector] whitelist is null");
+                    log("whitelist is null");
                 }
+            List<String> publicActions = (List<String>) XposedHelpers.getStaticObjectField(classXSpaceManager, "sPublicActionList");
+            if (publicActions != null) {
+                publicActions.clear();
+                log("clear publicActionList");
+            } else {
+                log("publicActionList is null");
+            }
         } catch (Throwable t) {
             log("hook xspace shell failed", t);
         }
