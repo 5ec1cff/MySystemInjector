@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.os.UserHandle;
+import android.view.Window;
 
 import java.io.File;
 import java.util.List;
@@ -391,6 +392,21 @@ public class HookEntry implements IXposedHookLoadPackage {
                     }
                 }
         );
+
+        try {
+            Helper.deoptimizeMethod(classMIUIResolverActivity, "onStart");
+        } catch (Throwable t) {
+            log("failed to deoptimize", t);
+        }
+
+        XposedBridge.hookAllMethods(Window.class, "addSystemFlags",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        log("clear hide non system overlay windows flags");
+                        param.args[0] = (int) param.args[0] & ~524288 /*SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS*/;
+                    }
+                });
     }
 
     private static class MyResolveInfo extends ResolveInfo {

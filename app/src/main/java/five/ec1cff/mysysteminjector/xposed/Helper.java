@@ -9,6 +9,8 @@ import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -18,6 +20,26 @@ import sun.misc.Unsafe;
 // https://github.com/LSPosed/AndroidHiddenApiBypass/blob/2e46e453c83035d201a90cc05cfd2a7aa0922fa7/library/src/main/java/org/lsposed/hiddenapibypass/HiddenApiBypass.java#L206
 @SuppressLint({"SoonBlockedPrivateApi", "DiscouragedPrivateApi"})
 public class Helper {
+    private final static Method deoptimizeMethod;
+
+    static {
+        Method m = null;
+        try {
+            m = XposedBridge.class.getDeclaredMethod("deoptimizeMethod", Member.class);
+        } catch (Throwable t) {
+            XposedBridge.log("cannot get deoptimizeMethod");
+        }
+        deoptimizeMethod = m;
+    }
+
+    static void deoptimizeMethod(Class<?> c, String n) throws InvocationTargetException, IllegalAccessException {
+        for (Method m : c.getDeclaredMethods()) {
+            if (deoptimizeMethod != null && m.getName().equals(n)) {
+                deoptimizeMethod.invoke(null, m);
+            }
+        }
+    }
+
     private static final Unsafe unsafe;
     private static final long methodsOffset;
     private static final long artMethodSize;

@@ -59,5 +59,7 @@ cmd font update /path/to/font.ttf /path/to/dummy
 
 ### xspace
 
-1. 在系统服务：允许 shell 指定用户直接启动 activity 而无需弹出选择分身的提示（ `am start --user` ）
-2. 在系统：ResolverActivity 直接显示分身 app 的打开方式，无需二次点击。  
+1. 在系统服务：允许 shell 指定用户直接启动 activity 而无需弹出选择双开的提示（ `am start --user` ）
+2. 在系统：ResolverActivity 直接显示双开 app 的打开方式，无需二次点击。
+3. 修复该版本中点击 xmsf 推送的通知会显示选择双开的 bug 。
+4. 禁止 ResolverActivity 添加 `SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS` flags ，允许悬浮窗在其上显示。  
