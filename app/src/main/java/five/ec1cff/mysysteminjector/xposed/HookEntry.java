@@ -1,5 +1,6 @@
 package five.ec1cff.mysysteminjector.xposed;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -405,6 +406,23 @@ public class HookEntry implements IXposedHookLoadPackage {
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                         log("clear hide non system overlay windows flags");
                         param.args[0] = (int) param.args[0] & ~524288 /*SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS*/;
+                    }
+                });
+
+        XposedBridge.hookAllMethods(classMIUIResolverActivity, "showTargetDetails",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        ResolveInfo ri = (ResolveInfo) param.args[0];
+                        Activity activity = (Activity) param.thisObject;
+                        if (ri.activityInfo.applicationInfo.uid / 100000 == 999) {
+                            Intent intent = new Intent().setAction("miui.intent.action.APP_MANAGER_APPLICATION_DETAIL")
+                                    .putExtra("package_name", ri.activityInfo.packageName)
+                                    .putExtra("miui.intent.extra.USER_ID", 999);
+                            activity.startActivity(intent);
+                            XposedHelpers.callMethod(activity, "dismiss");
+                            param.setResult(null);
+                        }
                     }
                 });
     }
