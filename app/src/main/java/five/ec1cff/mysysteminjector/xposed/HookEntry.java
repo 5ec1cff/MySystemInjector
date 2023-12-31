@@ -20,6 +20,7 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
+@SuppressWarnings("unchecked")
 public class HookEntry implements IXposedHookLoadPackage {
     private static final String TAG = "MySystemInjector";
     private static final String WORKDIR = "/data/system/fuckmiui";
@@ -275,9 +276,17 @@ public class HookEntry implements IXposedHookLoadPackage {
                 new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        List result = (List) param.getResult();
+                        List<Object> result = (List<Object>) param.getResult();
+                        List<Intent> intents = (List<Intent>) param.args[2];
+                        if (intents != null && !intents.isEmpty()) {
+                            String action = intents.get(0).getAction();
+                            if ("miui.intent.action.MIUI_CHOOSER".equals(action)
+                                    || Intent.ACTION_CHOOSER.equals(action)) {
+                                return;
+                            }
+                        }
                         if (result == null) return;
-                        List/*com.android.internal.app.ResolverActivity$ResolvedComponentInfo*/ listForXSpace = (List) XposedHelpers.callMethod(param.thisObject, "getResolversForIntentAsUser",
+                        List<Object>/*com.android.internal.app.ResolverActivity$ResolvedComponentInfo*/ listForXSpace = (List<Object>) XposedHelpers.callMethod(param.thisObject, "getResolversForIntentAsUser",
                                 param.args[0], param.args[1], param.args[2],
                                 XposedHelpers.callStaticMethod(android.os.UserHandle.class, "of", 999
                                 )
@@ -353,7 +362,7 @@ public class HookEntry implements IXposedHookLoadPackage {
 
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        currentResolveInfo.set(null);
+                        currentResolveInfo.remove();
                     }
                 });
 
