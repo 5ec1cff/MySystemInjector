@@ -239,6 +239,26 @@ public class HookEntry implements IXposedHookLoadPackage {
             XposedBridge.log(t);
         }
 
+        try {
+            if (isFeatureEnabled("clipboard")) {
+                XposedBridge.hookAllMethods(
+                        XposedHelpers.findClass("com.android.server.clipboard.ClipboardService", lpparam.classLoader),
+                        "clipboardAccessAllowed",
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                var pkg = (String) param.args[1];
+                                if (pkg == null) return;
+                                if ("com.fooview.android.fooview".equals(pkg) || "com.termux".equals(pkg) || "com.termux.api".equals(pkg))
+                                    param.setResult(true);
+                            }
+                        }
+                );
+            }
+        } catch (Throwable t) {
+            XposedBridge.log(t);
+        }
+
         hookXSpace(lpparam);
     }
 
