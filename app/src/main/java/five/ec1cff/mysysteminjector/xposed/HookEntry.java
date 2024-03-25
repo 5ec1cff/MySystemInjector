@@ -126,6 +126,18 @@ public class HookEntry implements IXposedHookLoadPackage {
         try {
             if (isFeatureEnabled("nomiuiintent")) {
                 log("hook for nomiuiintent");
+                // for hyperos 1.0.2.0
+
+                XposedHelpers.findAndHookMethod("com.android.server.pm.PackageManagerServiceImpl", lpparam.classLoader,
+                        "hookChooseBestActivity",
+                        Intent.class, String.class, long.class, List.class, int.class, ResolveInfo.class, new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                param.setResult(param.args[5]); // defaultValue
+                            }
+                        }
+                );
+                /*
                 // for 13.0.3
                 // miui-services.jar
                 XposedHelpers.findAndHookMethod("com.android.server.pm.PackageManagerServiceImpl", lpparam.classLoader,
@@ -136,7 +148,7 @@ public class HookEntry implements IXposedHookLoadPackage {
                             param.setResult(param.args[5]); // defaultValue
                         }
                     }
-                );
+                );*/
                 // for 12.5.7
                 // services.jar
                 /*
