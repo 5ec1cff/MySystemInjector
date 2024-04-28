@@ -42,6 +42,10 @@ public class HookEntry implements IXposedHookLoadPackage {
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
         boolean inSystemServer = lpparam.packageName.equals("android") && lpparam.processName.equals("android");
         boolean inSystem = lpparam.packageName.equals("system");
+        XposedBridge.log("handleLoadPackage inSystem=" + inSystem + " package=" + lpparam.packageName + " process=" + lpparam.processName);
+        if (isFeatureEnabled("share") && !inSystem) {
+            hookShareInUI(lpparam);
+        }
         if (!inSystemServer && !inSystem) {
             return;
         }
@@ -272,6 +276,39 @@ public class HookEntry implements IXposedHookLoadPackage {
         }
 
         hookXSpace(lpparam);
+    }
+
+    private void hookShareInUI(XC_LoadPackage.LoadPackageParam lpparam) {
+        try {
+            /*
+            var impl = new ResolverActivityStubImpl() {
+                @Override
+                public boolean useAospShareSheet() {
+                    XposedBridge.log("useAospShareSheet");
+                    return true;
+                }
+            };
+            XposedHelpers.callStaticMethod(
+                XposedHelpers.findClass("com.miui.base.MiuiStubRegistry", lpparam.classLoader),
+                "registerSingleton", impl
+            );
+            XposedHelpers.setStaticObjectField(ResolverActivityStub.class, "sInstance", impl);
+            */
+            XposedBridge.hookAllMethods(
+                    XposedHelpers.findClass("com.android.internal.app.ResolverActivityStubImpl", lpparam.classLoader),
+                    "useAospShareSheet",
+                    new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                            XposedBridge.log("useAospShareSheet");
+                            param.setResult(true);
+                        }
+                    }
+            );
+            XposedBridge.log("hook installed");
+        } catch (Throwable t) {
+            XposedBridge.log(t);
+        }
     }
 
     @SuppressWarnings("unchecked")
