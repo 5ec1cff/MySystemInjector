@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.os.UserHandle;
+import android.view.View;
 import android.view.Window;
 
 import java.io.File;
@@ -272,6 +273,30 @@ public class HookEntry implements IXposedHookLoadPackage {
                 );
             }
         } catch (Throwable t) {
+            XposedBridge.log(t);
+        }
+
+        try {
+            if (isFeatureEnabled("fixsync")) {
+                // https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/services/core/java/com/android/server/wm/WindowState.java;l=5756;drc=4eb30271c338af7ee6abcbd2b7a9a0721db0595b
+                // some goned accessibility windows does not get synced
+                XposedBridge.hookAllMethods(
+                        XposedHelpers.findClass("com.android.server.wm.WindowState", lpparam.classLoader),
+                        "isSyncFinished",
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                if ((int) XposedHelpers.getObjectField(param.thisObject, "mViewVisibility") != View.VISIBLE
+                                        && XposedHelpers.getObjectField(param.thisObject, "mActivityRecord") == null) {
+                                    // XposedBridge.log("no wait on " + param.thisObject);
+                                    param.setResult(true);
+                                }
+                            }
+                        }
+                );
+            }
+        } catch (Throwable t) {
+            XposedBridge.log("fixsync");
             XposedBridge.log(t);
         }
 
