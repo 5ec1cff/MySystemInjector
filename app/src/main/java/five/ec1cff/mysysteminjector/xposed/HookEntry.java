@@ -69,16 +69,16 @@ public class HookEntry implements IXposedHookLoadPackage {
         try {
             if (isFeatureEnabled("nowakepath")) {
                 log("hook for nowakepath");
+                XposedBridge.hookAllMethods(
+                        XposedHelpers.findClass("miui.app.ActivitySecurityHelper", lpparam.classLoader),
+                        "getCheckStartActivityIntent",
+                        XC_MethodReplacement.DO_NOTHING
+                );
                 // miui-framework.jar
                 XposedBridge.hookAllMethods(
                         XposedHelpers.findClass("miui.security.SecurityManager", lpparam.classLoader),
                         "getCheckStartActivityIntent",
-                        new XC_MethodHook() {
-                            @Override
-                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                                param.setResult(null);
-                            }
-                        }
+                        XC_MethodReplacement.DO_NOTHING
                 );
                 log("hook done");
             }
