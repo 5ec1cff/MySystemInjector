@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "five.ec1cff.mysysteminjector"
         minSdk = 30
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
     }
@@ -20,14 +20,14 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     namespace = "five.ec1cff.mysysteminjector"
 }
 
 dependencies {
-    implementation("androidx.annotation:annotation:1.7.1")
+    implementation("androidx.annotation:annotation:1.9.1")
     compileOnly("de.robv.android.xposed:api:82")
     compileOnly(project(":stub"))
 }

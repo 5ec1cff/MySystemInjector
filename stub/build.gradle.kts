@@ -4,12 +4,10 @@ plugins {
 
 android {
     namespace = "io.github.a13e300.tools.stub"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 27
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
 
@@ -23,8 +21,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
